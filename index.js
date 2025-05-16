@@ -109,7 +109,7 @@ app.get('*', async (req, res) => {
   localLogs.push(logData);
 
   try {
-    await axios.post('https://webhook.site/abcdef12-3456-7890-abcd-ef1234567890', logData);
+    await axios.post('https://webhook.site/a15a4110-fd76-42c4-ab89-8580cd9ef6c2', logData);
   } catch (err) {
     console.error('Gửi webhook lỗi:', err.message);
   }
