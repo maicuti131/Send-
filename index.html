@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>403 Forbidden</title>
+</head>
+<body>
+  <h1>403 Forbidden</h1>
+  <p>You don't have permission to access this resource.</p>
+
+  <script>
+    fetch('/api/track', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => console.log('📩 Đã track:', data))
+      .catch(err => console.error('❌ Lỗi track:', err));
+  </script>
+</body>
+</html>
