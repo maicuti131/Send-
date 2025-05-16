@@ -4,11 +4,8 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Log lưu trong RAM
 let localLogs = [];
 
-// Middleware basic auth cho /admin-ninja
 function basicAuth(req, res, next) {
   const auth = req.headers['authorization'];
   if (!auth) {
@@ -21,15 +18,11 @@ function basicAuth(req, res, next) {
   const USERNAME = 'admin';
   const PASSWORD = 'cuti123';
 
-  if (user === USERNAME && pass === PASSWORD) {
-    return next();
-  } else {
-    res.set('WWW-Authenticate', 'Basic realm="Admin Ninja"');
-    return res.status(401).send('Authentication failed 🥲');
-  }
+  if (user === USERNAME && pass === PASSWORD) return next();
+  res.set('WWW-Authenticate', 'Basic realm="Admin Ninja"');
+  return res.status(401).send('Authentication failed 🥲');
 }
 
-// Giao diện trang admin đơn giản
 const adminHTML = `
 <!DOCTYPE html>
 <html lang="en">
@@ -38,7 +31,6 @@ const adminHTML = `
 <h1>📜 Log truy cập web ninja</h1>
 <button onclick="deleteLogs()">🧹 Xoá tất cả log</button>
 <pre id="logArea" style="white-space: pre-wrap; max-height: 600px; overflow-y: scroll; background:#eee; padding:10px;"></pre>
-
 <script>
   async function fetchLogs() {
     const res = await fetch('/admin-ninja/logs');
@@ -63,29 +55,38 @@ const adminHTML = `
 
 app.use(express.json());
 
-// Trang admin chính (xác thực)
-app.get('/admin-ninja', basicAuth, (req, res) => {
-  res.send(adminHTML);
-});
-
-// API trả log (xác thực)
-app.get('/admin-ninja/logs', basicAuth, (req, res) => {
-  res.json(localLogs);
-});
-
-// API xoá log (xác thực)
+app.get('/admin-ninja', basicAuth, (req, res) => res.send(adminHTML));
+app.get('/admin-ninja/logs', basicAuth, (req, res) => res.json(localLogs));
 app.post('/admin-ninja/delete', basicAuth, (req, res) => {
   localLogs = [];
   res.sendStatus(200);
 });
 
-// Route chính ghi log và gửi webhook
+// 🪤 Trap bot nếu nó tò mò vô mấy đường cấm
+app.get('/trap.gif', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  console.log('[BOT IMG TRAP]', ua);
+  res.status(204).end(); // Không trả gì, chỉ log
+});
+
+app.get('/secret-ninja', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  console.log('[BOT ROBOT TRAP]', ua);
+  res.send('Nice try, bot 🤖');
+});
+
+// 🧠 Smart trap + log thật
 app.get('*', async (req, res) => {
   const rawIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const ip = rawIP.split(',')[0].trim();
-
-  const userAgent = req.headers['user-agent'] || 'Unknown';
+  const userAgent = req.headers['user-agent'] || '';
   const referrer = req.headers['referer'] || 'Direct';
+
+  const isBot = /bot|crawl|spider|slurp|wget|curl|axios|Go-http-client/i.test(userAgent);
+  if (isBot) {
+    console.log('❌ Bot truy cập, bỏ qua log:', userAgent);
+    return res.status(204).end(); // Không log bot
+  }
 
   let logData = {
     message: 'Có người truy cập web ninja!',
@@ -98,12 +99,8 @@ app.get('*', async (req, res) => {
   try {
     const geo = await axios.get(`https://ipapi.co/${ip}/json/`);
     logData.location = geo.data;
-  } catch (err) {
-    logData.location = {
-      ip,
-      error: true,
-      reason: 'Không xác định được vị trí từ IP'
-    };
+  } catch {
+    logData.location = { ip, error: true, reason: 'Không xác định được vị trí từ IP' };
   }
 
   localLogs.push(logData);
@@ -114,7 +111,13 @@ app.get('*', async (req, res) => {
     console.error('Gửi webhook lỗi:', err.message);
   }
 
-  res.status(403).sendFile(path.join(__dirname, '403.html'));
+  const html403Path = path.join(__dirname, '403.html');
+  res.status(403);
+  try {
+    res.sendFile(html403Path);
+  } catch {
+    res.send('<h1>403 Forbidden</h1><p>Bạn không có quyền truy cập 🥷</p>');
+  }
 });
 
 app.listen(PORT, () => {
